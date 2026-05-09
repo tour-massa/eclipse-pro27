@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eclipse Pro27 | The 371-Second Experiment</title>
+    
+    <!-- Firebase UI CSS for the Login Popup -->
+    <link rel="stylesheet" href="https://www.gstatic.com/firebasejs/ui/6.0.1/firebase-ui-auth.css" />
+    
     <style>
         :root {
             --primary: #0b0d17; /* Deep Space */
@@ -28,6 +32,8 @@
         .nav-links a:hover { color: var(--accent); }
         .admin-btn { background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; border-radius: 5px; cursor: pointer; transition: 0.3s; }
         .admin-btn:hover { background: var(--accent); color: var(--primary); }
+        .logout-btn { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 8px 15px; border-radius: 5px; cursor: pointer; display: none; }
+        .logout-btn:hover { background: var(--danger); color: white; }
 
         /* Sections General */
         section { padding: 100px 50px; min-height: 100vh; }
@@ -72,19 +78,20 @@
         .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
         .badge-pending { background: #ffe0b2; color: #e65100; }
         .badge-progress { background: #bbdefb; color: #0d47a1; }
-        .badge-complete { background: #c8e6c9; color: #1b5e20; }
 
         .edit-instructions { background: #fff3e0; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid var(--warning); font-size: 0.9rem; }
 
-        /* Modal for Login */
-        #loginModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; }
-        .modal-content { background: var(--primary); padding: 40px; border-radius: 10px; width: 300px; text-align: center; border: 1px solid var(--accent); }
-        .modal-content input { width: 100%; padding: 10px; margin: 15px 0; background: var(--secondary); border: 1px solid #444; color: white; border-radius: 5px; }
-        .modal-content button { width: 100%; }
+        /* Firebase UI Modal Overrides */
+        #loginModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 10px; width: 400px; max-width: 90%; text-align: center; }
+        /* Force dark mode text on Firebase UI to match our site */
+        .firebaseui-id-page-completed-tos { color: #333; }
+        
+        .welcome-msg { color: var(--accent); font-size: 0.9rem; margin-right: 15px; display: none; }
 
         /* Responsive */
         @media (max-width: 768px) {
-            nav { padding: 15px 20px; }
+            nav { padding: 15px 20px; flex-wrap: wrap; gap: 10px; }
             section { padding: 80px 20px; }
             #home h1 { font-size: 2.5rem; }
             .countdown { gap: 10px; }
@@ -103,24 +110,22 @@
             <a onclick="scrollToSection('home')">Home</a>
             <a onclick="scrollToSection('science')">The Science</a>
             <a onclick="scrollToSection('travel')">Travel & Safety</a>
-            <button class="admin-btn" onclick="openLogin()">Project Dashboard</button>
+        </div>
+        <div style="display: flex; align-items: center;">
+            <span id="welcomeMsg" class="welcome-msg"></span>
+            <button id="adminBtn" class="admin-btn" onclick="openLogin()">Project Dashboard</button>
+            <button id="logoutBtn" class="logout-btn" onclick="logout()">Logout</button>
         </div>
     </nav>
 
-    <!-- Login Modal -->
+    <!-- Login Modal with Firebase UI Container -->
     <div id="loginModal">
         <div class="modal-content">
-            <h3>Authorized Access</h3>
-            <p style="font-size: 0.8rem; color: var(--text-dim);">Enter password to edit dashboard</p>
-            <input type="password" id="pwdInput" placeholder="Password (eclipse2027)">
-            <button class="cta-btn" onclick="login()">Access Dashboard</button>
-            <p id="loginError" style="color: red; display: none; margin-top: 10px; font-size: 0.8rem;">Incorrect Password</p>
+            <div id="firebaseui-auth-container"></div>
         </div>
     </div>
 
     <!-- Public Front End -->
-    
-    <!-- Hero Section -->
     <section id="home">
         <h1>THE <span class="highlight">371-SECOND</span> EXPERIMENT</h1>
         <p>Benghazi, Libya. The premier global laboratory for the 2027 Total Solar Eclipse. 6 Minutes. 11 Seconds. A once-in-a-century scientific convergence.</p>
@@ -133,11 +138,9 @@
         <button class="cta-btn" onclick="scrollToSection('science')">Explore The Science</button>
     </section>
 
-    <!-- Science & Strategy Section -->
     <section id="science">
         <h2>Why Benghazi? <span class="highlight">The 6-Minute Laboratory</span></h2>
         <p>While most total eclipses last 2-3 minutes, Benghazi offers 6 minutes and 11 seconds of totality. This duration will not be exceeded on land until the year 2114.</p>
-        
         <div class="cards">
             <div class="card">
                 <h3>The Academic Incentive</h3>
@@ -154,11 +157,9 @@
         </div>
     </section>
 
-    <!-- Travel & Safety Section -->
     <section id="travel">
         <h2>Travel & <span class="highlight">Operational Realities</span></h2>
         <p>Traveling to Eastern Libya requires strict adherence to geopolitical and security protocols. Safety is managed via a unique "Technical Bridge" framework.</p>
-        
         <ul>
             <li><strong>Unified E-Visa System:</strong> Streamlined portal recognized by both Tripoli (GNU) and Benghazi authorities.</li>
             <li><strong>Mandatory Security Escorts:</strong> All international visitors are assigned a "Tourist Police" travel buddy for safety and real-time local intelligence.</li>
@@ -177,165 +178,170 @@
         <h2>Project Dashboard: Eclipse Pro27</h2>
         
         <div class="dash-grid">
-            <!-- KPIs -->
             <div class="dash-card">
                 <h3>Key Performance Indicators</h3>
                 <table>
-                    <thead>
-                        <tr><th>KPI</th><th>Target</th><th>Status</th></tr>
-                    </thead>
+                    <thead><tr><th>KPI</th><th>Target</th><th>Status</th></tr></thead>
                     <tbody>
-                        <tr>
-                            <td>Nat. Eclipse Committee</td>
-                            <td contenteditable="true">Formed & Operational</td>
-                            <td><span class="status-badge badge-pending">Pending</span></td>
-                        </tr>
-                        <tr>
-                            <td>Academic Grants</td>
-                            <td contenteditable="true">371 Researchers</td>
-                            <td><span class="status-badge badge-progress">0/371</span></td>
-                        </tr>
-                        <tr>
-                            <td>E-Visa Integration</td>
-                            <td contenteditable="true">Portal Live</td>
-                            <td><span class="status-badge badge-progress">In Progress</span></td>
-                        </tr>
+                        <tr><td>Nat. Eclipse Committee</td><td contenteditable="true">Formed & Operational</td><td><span class="status-badge badge-pending">Pending</span></td></tr>
+                        <tr><td>Academic Grants</td><td contenteditable="true">371 Researchers</td><td><span class="status-badge badge-progress">0/371</span></td></tr>
+                        <tr><td>E-Visa Integration</td><td contenteditable="true">Portal Live</td><td><span class="status-badge badge-progress">In Progress</span></td></tr>
                     </tbody>
                 </table>
             </div>
 
-            <!-- Budget -->
             <div class="dash-card">
                 <h3>Budget Tracker ($114k Est)</h3>
                 <table>
-                    <thead>
-                        <tr><th>Item</th><th>Cost (USD)</th><th>Funded?</th></tr>
-                    </thead>
+                    <thead><tr><th>Item</th><th>Cost (USD)</th><th>Funded?</th></tr></thead>
                     <tbody>
-                        <tr>
-                            <td contenteditable="true">371 Research Grants</td>
-                            <td contenteditable="true">$74,200</td>
-                            <td><span class="status-badge badge-pending">No</span></td>
-                        </tr>
-                        <tr>
-                            <td contenteditable="true">ISO Eclipse Glasses</td>
-                            <td contenteditable="true">$5,000</td>
-                            <td><span class="status-badge badge-pending">No</span></td>
-                        </tr>
-                        <tr>
-                            <td contenteditable="true">Digital Marketing & IBTM</td>
-                            <td contenteditable="true">$15,000</td>
-                            <td><span class="status-badge badge-pending">No</span></td>
-                        </tr>
-                        <tr>
-                            <td contenteditable="true">Saros 136 Symposium</td>
-                            <td contenteditable="true">$20,000</td>
-                            <td><span class="status-badge badge-pending">No</span></td>
-                        </tr>
+                        <tr><td contenteditable="true">371 Research Grants</td><td contenteditable="true">$74,200</td><td><span class="status-badge badge-pending">No</span></td></tr>
+                        <tr><td contenteditable="true">ISO Eclipse Glasses</td><td contenteditable="true">$5,000</td><td><span class="status-badge badge-pending">No</span></td></tr>
+                        <tr><td contenteditable="true">Digital Marketing & IBTM</td><td contenteditable="true">$15,000</td><td><span class="status-badge badge-pending">No</span></td></tr>
+                        <tr><td contenteditable="true">Saros 136 Symposium</td><td contenteditable="true">$20,000</td><td><span class="status-badge badge-pending">No</span></td></tr>
                     </tbody>
                 </table>
             </div>
 
-            <!-- Risk Register -->
             <div class="dash-card">
                 <h3>Risk Register & Mitigation</h3>
                 <table>
-                    <thead>
-                        <tr><th>Risk</th><th>Level</th><th>Mitigation Owner</th></tr>
-                    </thead>
+                    <thead><tr><th>Risk</th><th>Level</th><th>Mitigation Owner</th></tr></thead>
                     <tbody>
-                        <tr>
-                            <td contenteditable="true">East/West Political Friction</td>
-                            <td><span class="status-badge badge-pending" style="background:#ffcdd2; color:#b71c1c">High</span></td>
-                            <td contenteditable="true">Nat. Eclipse Committee</td>
-                        </tr>
-                        <tr>
-                            <td contenteditable="true">Extreme Heat / Dust Storms</td>
-                            <td><span class="status-badge badge-progress" style="background:#ffe0b2; color:#e65100">Med</span></td>
-                            <td contenteditable="true">Logistics Team</td>
-                        </tr>
-                        <tr>
-                            <td contenteditable="true">Competitor Loss (Spain/Egypt)</td>
-                            <td><span class="status-badge badge-progress" style="background:#ffe0b2; color:#e65100">Med</span></td>
-                            <td contenteditable="true">TOUR:MASSA™ Marketing</td>
-                        </tr>
+                        <tr><td contenteditable="true">East/West Political Friction</td><td><span class="status-badge badge-pending" style="background:#ffcdd2; color:#b71c1c">High</span></td><td contenteditable="true">Nat. Eclipse Committee</td></tr>
+                        <tr><td contenteditable="true">Extreme Heat / Dust Storms</td><td><span class="status-badge badge-progress" style="background:#ffe0b2; color:#e65100">Med</span></td><td contenteditable="true">Logistics Team</td></tr>
+                        <tr><td contenteditable="true">Competitor Loss (Spain/Egypt)</td><td><span class="status-badge badge-progress" style="background:#ffe0b2; color:#e65100">Med</span></td><td contenteditable="true">TOUR:MASSA™ Marketing</td></tr>
                     </tbody>
                 </table>
             </div>
 
-            <!-- Timeline -->
             <div class="dash-card">
                 <h3>Critical Timeline</h3>
                 <table>
-                    <thead>
-                        <tr><th>Date</th><th>Milestone</th><th>Action Required</th></tr>
-                    </thead>
+                    <thead><tr><th>Date</th><th>Milestone</th><th>Action Required</th></tr></thead>
                     <tbody>
-                        <tr>
-                            <td contenteditable="true">Q3 2026</td>
-                            <td contenteditable="true">Form Eclipse Committee</td>
-                            <td contenteditable="true">Propose to GNU & East Reps</td>
-                        </tr>
-                        <tr>
-                            <td contenteditable="true">Nov 17, 2026</td>
-                            <td contenteditable="true">IBTM World Barcelona</td>
-                            <td contenteditable="true">Finalize Pitch Deck</td>
-                        </tr>
-                        <tr>
-                            <td contenteditable="true">Aug 2, 2027</td>
-                            <td contenteditable="true">TOTALITY (11:27 AM)</td>
-                            <td contenteditable="true">Event Execution</td>
-                        </tr>
+                        <tr><td contenteditable="true">Q3 2026</td><td contenteditable="true">Form Eclipse Committee</td><td contenteditable="true">Propose to GNU & East Reps</td></tr>
+                        <tr><td contenteditable="true">Nov 17, 2026</td><td contenteditable="true">IBTM World Barcelona</td><td contenteditable="true">Finalize Pitch Deck</td></tr>
+                        <tr><td contenteditable="true">Aug 2, 2027</td><td contenteditable="true">TOTALITY (11:27 AM)</td><td contenteditable="true">Event Execution</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </section>
 
+    <!-- Firebase Core & UI Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/ui/6.0.1/firebase-ui-auth.js"></script>
+
     <script>
-        // --- COUNTDOWN TIMER ---
+        // --- 1. COUNTDOWN TIMER ---
         const eclipseDate = new Date("August 2, 2027 11:27:43").getTime();
-        
         const x = setInterval(function() {
             const now = new Date().getTime();
             const distance = eclipseDate - now;
-            
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-            
-            document.getElementById("days").innerHTML = days;
-            document.getElementById("hours").innerHTML = hours < 10 ? "0" + hours : hours;
-            document.getElementById("minutes").innerHTML = minutes < 10 ? "0" + minutes : minutes;
-            document.getElementById("seconds").innerHTML = seconds < 10 ? "0" + seconds : seconds;
+            document.getElementById("days").innerHTML = Math.floor(distance / (1000 * 60 * 60 * 24));
+            document.getElementById("hours").innerHTML = String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0');
+            document.getElementById("minutes").innerHTML = String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+            document.getElementById("seconds").innerHTML = String(Math.floor((distance % (1000 * 60)) / 1000)).padStart(2, '0');
         }, 1000);
 
-        // --- SMOOTH SCROLL ---
+        // --- 2. SMOOTH SCROLL ---
         function scrollToSection(id) {
             document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
         }
 
-        // --- DASHBOARD LOGIN & EDITABLE LOGIC ---
-        function openLogin() {
-            // If dashboard is already visible, just scroll to it
-            if(document.getElementById('dashboard').style.display === 'block') {
-                scrollToSection('dashboard');
-                return;
-            }
-            document.getElementById('loginModal').style.display = 'flex';
-        }
+        // --- 3. FIREBASE AUTHENTICATION ---
+        const firebaseConfig = {
+  		apiKey: "AIzaSyDO3teJHNOIhek2yeHVMAhMHWeVHZIRTIk",
+  		authDomain: "eclipse-pro27.firebaseapp.com",
+  		projectId: "eclipse-pro27",
+  		storageBucket: "eclipse-pro27.firebasestorage.app",
+  		messagingSenderId: "303594090942",
+  		appId: "1:303594090942:web:7d188f326398645c8d89ef"
+};
+        };
 
-        function login() {
-            const pwd = document.getElementById('pwdInput').value;
-            if(pwd === 'eclipse2027') { // Set your password here
-                document.getElementById('loginModal').style.display = 'none';
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        // Initialize FirebaseUI
+        const ui = new firebaseui.auth.AuthUI(firebase.auth());
+
+        const uiConfig = {
+            callbacks: {
+                signInSuccessWithAuthResult: function(authResult, redirectUrl) {
+                    // User successfully signed in.
+                    handleLoginState(); // Update UI
+                    document.getElementById('loginModal').style.display = 'none'; // Close modal
+                    return false; // Return false to avoid redirect; we handle it manually
+                }
+            },
+            signInFlow: 'popup',
+            signInOptions: [
+                // Leave the lines as is for the providers you want to offer your users.
+                firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+                firebase.auth.FacebookAuthProvider.PROVIDER_ID,
+                firebase.auth.GithubAuthProvider.PROVIDER_ID,
+            ],
+            // Terms of service url.
+            tosUrl: '<your-tos-url>',
+            // Privacy policy url.
+            privacyPolicyUrl: '<your-privacy-policy-url>'
+        };
+
+        function openLogin() {
+            // Check if user is already logged in
+            if (firebase.auth().currentUser) {
                 document.getElementById('dashboard').style.display = 'block';
                 scrollToSection('dashboard');
             } else {
-                document.getElementById('loginError').style.display = 'block';
+                // Show the login modal and start FirebaseUI
+                document.getElementById('loginModal').style.display = 'flex';
+                ui.start('#firebaseui-auth-container', uiConfig);
             }
         }
+
+        function logout() {
+            firebase.auth().signOut().then(() => {
+                handleLoginState(); // Update UI
+                document.getElementById('dashboard').style.display = 'none';
+                scrollToSection('home');
+            }).catch((error) => {
+                console.error("Sign out error", error);
+            });
+        }
+
+        // Function to handle UI changes based on login state
+        function handleLoginState() {
+            const user = firebase.auth().currentUser;
+            const adminBtn = document.getElementById('adminBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const welcomeMsg = document.getElementById('welcomeMsg');
+
+            if (user) {
+                // User is signed in.
+                adminBtn.innerText = "Go to Dashboard";
+                logoutBtn.style.display = 'inline-block';
+                welcomeMsg.style.display = 'inline-block';
+                welcomeMsg.innerText = `Hello, ${user.displayName || 'Researcher'}`;
+            } else {
+                // User is signed out.
+                adminBtn.innerText = "Project Dashboard";
+                logoutBtn.style.display = 'none';
+                welcomeMsg.style.display = 'none';
+            }
+        }
+
+        // Listen for authentication state changes (handles page reloads)
+        firebase.auth().onAuthStateChanged((user) => {
+            handleLoginState();
+            // If they were on the dashboard and refresh, keep them there
+            if (user && document.getElementById('dashboard').style.display === 'block') {
+                // keep it visible
+            }
+        });
+
     </script>
 </body>
 </html>
